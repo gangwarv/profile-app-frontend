@@ -1,0 +1,11 @@
+/*
+ * Tailwind CSS v4 is loaded through the @tailwindcss/vite plugin.
+ * Put global (non-utility) styles below this import.
+ */
+@import 'tailwindcss';
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
