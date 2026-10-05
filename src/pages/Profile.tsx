@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth.ts'
 
 function initialsOf(name: string): string {
@@ -13,22 +12,21 @@ function initialsOf(name: string): string {
 
 export function Profile() {
   const { user, logout } = useAuth()
-  const navigate = useNavigate()
 
   // ProtectedRoute already redirects, this keeps TypeScript happy.
   if (user === null) {
     return null
   }
 
-  const handleSignOut = () => {
-    logout()
-    navigate('/', { replace: true })
+  // MSAL clears the local cache and sends the browser back to `postLogoutRedirectUri`.
+  const handleSignOut = async () => {
+    await logout()
   }
 
   const details = [
     { label: 'Name', value: user.name },
     { label: 'Email', value: user.email },
-    { label: 'Session', value: 'Active (stored in localStorage)' },
+    { label: 'Session', value: 'Active (Microsoft Entra ID / MSAL)' },
   ]
 
   return (

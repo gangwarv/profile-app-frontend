@@ -5,16 +5,14 @@ import { useAuth } from '../auth/useAuth.ts'
 type LoginLocationState = { from?: string }
 
 export function Login() {
-  const { login, isAuthenticated } = useAuth()
+  const { login, isAuthenticated, isLoading, error } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const redirectTo = (location.state as LoginLocationState | null)?.from ?? '/profile'
+  const isBusy = isLoading || isSubmitting
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -24,14 +22,11 @@ export function Login() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setError(null)
     setIsSubmitting(true)
 
     try {
-      await login(email, password)
-      navigate(redirectTo, { replace: true })
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Unable to sign in.')
+      // Redirects to the B2C policy; B2C reports failures through `error`.
+      await login()
     } finally {
       setIsSubmitting(false)
     }
@@ -44,7 +39,8 @@ export function Login() {
           Log in
         </h1>
         <p className="text-sm text-slate-600">
-          Demo sign-in — any email and any non-empty password is accepted.
+          Sign-in is handled by Microsoft Entra ID (B2C). You will be redirected to the
+          sign-up/sign-in page and returned here afterwards.
         </p>
       </div>
 
@@ -52,34 +48,6 @@ export function Login() {
         onSubmit={handleSubmit}
         className="flex flex-col gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
       >
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700">
-          Email
-          <input
-            type="email"
-            name="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700">
-          Password
-          <input
-            type="password"
-            name="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="••••••••"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-          />
-        </label>
-
         {error !== null && (
           <p
             role="alert"
@@ -91,10 +59,10 @@ export function Login() {
 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isBusy}
           className="cursor-pointer rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSubmitting ? 'Signing in…' : 'Sign in'}
+          {isBusy ? 'Redirecting…' : 'Sign in with Microsoft'}
         </button>
       </form>
 

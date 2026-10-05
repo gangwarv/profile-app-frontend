@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth.ts'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -12,11 +12,10 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 /** Shared shell: header navigation, routed content and footer. */
 export function RootLayout() {
   const { user, isAuthenticated, logout } = useAuth()
-  const navigate = useNavigate()
 
-  const handleSignOut = () => {
-    logout()
-    navigate('/', { replace: true })
+  // MSAL clears the local cache and sends the browser back to `postLogoutRedirectUri`.
+  const handleSignOut = async () => {
+    await logout()
   }
 
   return (
