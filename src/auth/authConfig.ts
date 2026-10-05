@@ -80,7 +80,8 @@ const knownAuthorities =
 const redirectUri = readEnv(import.meta.env.VITE_AZURE_REDIRECT_URI) ?? `${window.location.origin}/`
 const postLogoutRedirectUri =
   readEnv(import.meta.env.VITE_AZURE_POST_LOGOUT_REDIRECT_URI) ?? redirectUri
-const apiScope = readEnv(import.meta.env.VITE_AZURE_API_SCOPE)
+const apiProfileScope = readEnv(import.meta.env.VITE_AZURE_PROFILE_SCOPE)
+const apiUsersScope = readEnv(import.meta.env.VITE_AZURE_USERS_SCOPE)
 
 // Microsoft Entra ID (Azure AD) configuration constants.
 export const msalConfig: Configuration = {
@@ -130,5 +131,5 @@ export const loginRequest: RedirectRequest = {
 // Scopes used when this app calls your own API with an access token.
 // Set VITE_AZURE_API_SCOPE (e.g. api://<backend-client-id>/.default) to enable it.
 export const apiRequest: SilentRequest = {
-  scopes: apiScope === undefined ? [] : [apiScope],
+  scopes: apiProfileScope === undefined ? [] : [apiProfileScope, apiUsersScope!],
 }

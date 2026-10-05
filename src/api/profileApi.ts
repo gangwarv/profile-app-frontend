@@ -20,7 +20,7 @@ type ProfileResponse = {
 const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
 export const apiBaseUrl =
   configuredBaseUrl === undefined || configuredBaseUrl === ''
-    ? 'http://localhost:5290'
+    ? 'https://localhost:7274'
     : configuredBaseUrl.replace(/\/+$/, '')
 
 /** True once VITE_AZURE_API_SCOPE is set, i.e. the app can talk to the backend. */
