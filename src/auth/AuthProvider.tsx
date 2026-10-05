@@ -4,7 +4,7 @@ import { useMsal } from '@azure/msal-react'
 import { AuthContext, type User } from './auth-context.ts'
 import { loginRequest } from './authConfig.ts'
 
-/** Turns "ada.lovelace@contoso.com" into "Ada Lovelace" when B2C returns no display name. */
+/** Turns "ada.lovelace@contoso.com" into "Ada Lovelace" when Entra ID returns no display name. */
 function nameFromEmail(email: string): string {
   const [localPart = 'guest'] = email.split('@')
   const name = localPart
@@ -26,11 +26,34 @@ function toUser(account: AccountInfo): User {
   }
 }
 
+/** Turns MSAL errors into guidance the login screen can act on. */
+function describeAuthError(cause: unknown): string {
+  if (!(cause instanceof Error)) {
+    return 'Unable to start the sign-in.'
+  }
+
+  const errorCode = (cause as Error & { errorCode?: string }).errorCode
+  if (
+    errorCode === 'endpoints_resolution_error' ||
+    cause.message.includes('endpoints_resolution_error')
+  ) {
+    return (
+      'MSAL could not resolve the Microsoft Entra ID sign-in endpoint. Check ' +
+      'VITE_AZURE_AUTHORITY and VITE_AZURE_KNOWN_AUTHORITIES in .env — for Entra External ID (CIAM) ' +
+      'the authority must include the tenant (https://<tenant>.ciamlogin.com/<tenant>.onmicrosoft.com), ' +
+      'and knownAuthorities must list both the name-based host and the tenant GUID host ' +
+      '(<tenant-id>.ciamlogin.com), because the discovery issuer is GUID-based.'
+    )
+  }
+
+  return cause.message
+}
+
 /**
- * Authentication backed by Microsoft Entra ID (Azure AD B2C).
+ * Authentication backed by Microsoft Entra ID (Azure AD).
  *
  * `MsalProvider` (see App.tsx) initializes MSAL and completes the redirect that
- * the B2C sign-up/sign-in policy sends back, so this provider only has to expose
+ * the Entra ID sign-in page sends back, so this provider only has to expose
  * the MSAL account through the app's own `useAuth()` context.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -58,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const callbackId = instance.addEventCallback(
       (message) => {
         if (message.error !== null && message.interactionType === InteractionType.Redirect) {
-          setError(message.error.message)
+          setError(describeAuthError(message.error))
         }
       },
       [EventType.ACQUIRE_TOKEN_FAILURE],
@@ -75,11 +98,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null)
 
     try {
-      // Leaves the SPA for the hosted B2C sign-up/sign-in page; MSAL picks the
-      // flow up again from the redirect URI registered on the app registration.
+      // Leaves the SPA for the hosted Microsoft Entra ID sign-in page; MSAL picks
+      // the flow up again from the redirect URI registered on the app registration.
       await instance.loginRedirect(loginRequest)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Unable to start the sign-in.')
+      setError(describeAuthError(cause))
     }
   }, [instance])
 
@@ -87,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null)
 
     try {
-      // Clears the local MSAL cache, then redirects through the B2C sign-out page.
+      // Clears the local MSAL cache, then redirects through the Microsoft sign-out page.
       await instance.logoutRedirect({ account: instance.getActiveAccount() })
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to sign out.')

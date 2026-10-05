@@ -25,7 +25,7 @@ export function Login() {
     setIsSubmitting(true)
 
     try {
-      // Redirects to the B2C policy; B2C reports failures through `error`.
+      // Redirects to Microsoft Entra ID; failures come back through `error`.
       await login()
     } finally {
       setIsSubmitting(false)
@@ -39,8 +39,8 @@ export function Login() {
           Log in
         </h1>
         <p className="text-sm text-slate-600">
-          Sign-in is handled by Microsoft Entra ID (B2C). You will be redirected to the
-          sign-up/sign-in page and returned here afterwards.
+          Sign-in is handled by Microsoft Entra ID. You will be redirected to Microsoft&apos;s
+          sign-in page and returned here afterwards.
         </p>
       </div>
 

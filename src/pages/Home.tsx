@@ -18,7 +18,7 @@ const routeCards = [
     to: '/login',
     path: '/login',
     title: 'Log in',
-    description: 'Redirects to the Microsoft Entra ID (B2C) sign-up/sign-in page.',
+    description: 'Redirects to the Microsoft Entra ID sign-in page.',
   },
 ]
 
@@ -37,8 +37,7 @@ export function Home() {
             : 'Profile App'}
         </h1>
         <p className="max-w-2xl text-lg text-slate-600">
-          A React + Vite + Tailwind starter with three routes and Microsoft Entra ID
-          (B2C) sign-in.
+          A React + Vite + Tailwind starter with three routes and Microsoft Entra ID sign-in.
         </p>
 
         <div className="flex flex-wrap gap-3 pt-1">

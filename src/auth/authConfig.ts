@@ -17,14 +17,14 @@ function requireEnv(name: string, raw: string | undefined): string {
 
   if (value === undefined) {
     throw new Error(
-      `Missing ${name}. Copy .env.example to .env.local and fill in the Microsoft Entra ID (B2C) values of your app registration.`,
+      `Missing ${name}. Copy .env.example to .env.local and fill in the values of your Microsoft Entra ID app registration.`,
     )
   }
 
   return value
 }
 
-/** Returns the host of an absolute URL, e.g. "your-tenant.b2clogin.com". */
+/** Returns the host of an absolute URL, e.g. "gangwarvs.ciamlogin.com". */
 function hostOf(url: string): string {
   try {
     return new URL(url).host
@@ -34,23 +34,43 @@ function hostOf(url: string): string {
 }
 
 const clientId = requireEnv('VITE_AZURE_CLIENT_ID', import.meta.env.VITE_AZURE_CLIENT_ID)
-const tenantName = requireEnv('VITE_AZURE_TENANT_NAME', import.meta.env.VITE_AZURE_TENANT_NAME)
-const signUpSignInPolicy = requireEnv(
-  'VITE_AZURE_SIGN_UP_SIGN_IN_POLICY',
-  import.meta.env.VITE_AZURE_SIGN_UP_SIGN_IN_POLICY,
-)
+const tenant = readEnv(import.meta.env.VITE_AZURE_TENANT_SUBDOMAIN)
+const configuredAuthority = readEnv(import.meta.env.VITE_AZURE_AUTHORITY)
 
-// Authority of the sign-up/sign-in policy, e.g.
-// https://contoso.b2clogin.com/contoso.onmicrosoft.com/B2C_1_susi
+// Either the CIAM tenant subdomain or a full authority URL must be given — the
+// authority cannot be built without knowing the tenant.
+if (tenant === undefined && configuredAuthority === undefined) {
+  throw new Error(
+    'Missing VITE_AZURE_TENANT_SUBDOMAIN (or VITE_AZURE_AUTHORITY). Copy .env.example to .env.local and fill in your Microsoft Entra ID tenant.',
+  )
+}
+
+// Authority of the Entra External ID (CIAM) tenant. The tenant path segment is
+// required: https://<tenant>.ciamlogin.com/<tenant>.onmicrosoft.com — a bare host
+// cannot serve the OIDC discovery document.
 const authority =
-  readEnv(import.meta.env.VITE_AZURE_AUTHORITY) ??
-  `https://${tenantName}.b2clogin.com/${tenantName}.onmicrosoft.com/${signUpSignInPolicy}`
+  configuredAuthority ?? `https://${tenant}.ciamlogin.com/${tenant}.onmicrosoft.com`
 
-// B2C requires every authority host to be listed explicitly, otherwise MSAL refuses it.
+// hostOf() also validates that the authority is a well-formed absolute URL.
+const authorityHost = hostOf(authority)
+
+// Fail fast with actionable guidance instead of letting MSAL surface a cryptic
+// endpoints_resolution_error at sign-in time.
+if (new URL(authority).pathname.replace(/\/+$/, '') === '') {
+  const example = authorityHost.endsWith('.ciamlogin.com')
+    ? `https://${authorityHost}/<tenant>.onmicrosoft.com`
+    : `https://${authorityHost}/<tenant-id-or-domain>`
+  throw new Error(
+    `VITE_AZURE_AUTHORITY ("${authority}") is missing the tenant path segment, so MSAL cannot resolve the sign-in endpoints (endpoints_resolution_error). Expected e.g. ${example}.`,
+  )
+}
+
+// MSAL only talks to hosts it knows: custom authority hosts (e.g. <tenant>.ciamlogin.com)
+// must be listed explicitly, otherwise it refuses the authority.
 const configuredAuthorities = readEnv(import.meta.env.VITE_AZURE_KNOWN_AUTHORITIES)
 const knownAuthorities =
   configuredAuthorities === undefined
-    ? [hostOf(authority)]
+    ? [authorityHost]
     : configuredAuthorities
         .split(',')
         .map((host) => host.trim())
@@ -62,7 +82,7 @@ const postLogoutRedirectUri =
   readEnv(import.meta.env.VITE_AZURE_POST_LOGOUT_REDIRECT_URI) ?? redirectUri
 const apiScope = readEnv(import.meta.env.VITE_AZURE_API_SCOPE)
 
-// Azure AD B2C / Microsoft Entra ID configuration constants.
+// Microsoft Entra ID (Azure AD) configuration constants.
 export const msalConfig: Configuration = {
   auth: {
     clientId,
@@ -101,13 +121,14 @@ export const msalConfig: Configuration = {
   },
 }
 
-// Add scopes here for ID token to be used by MSAL Mobile/SPA applications.
+// ID token scopes for the sign-in request. `offline_access` asks Entra ID for a
+// refresh token so MSAL can renew tokens silently after the redirect completes.
 export const loginRequest: RedirectRequest = {
-  scopes: ['openid', 'profile', 'email'],
+  scopes: ['openid', 'profile', 'email', 'offline_access'],
 }
 
 // Scopes used when this app calls your own API with an access token.
-// Set VITE_AZURE_API_SCOPE (e.g. https://your-tenant.onmicrosoft.com/api/access_as_user) to enable it.
+// Set VITE_AZURE_API_SCOPE (e.g. api://<backend-client-id>/.default) to enable it.
 export const apiRequest: SilentRequest = {
   scopes: apiScope === undefined ? [] : [apiScope],
 }
